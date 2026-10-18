@@ -128,6 +128,15 @@ kbd{font-family:inherit;font-size:.8rem;border:1px solid var(--line);border-bott
 .aday .list{display:flex;flex-direction:column;gap:4px;min-width:0}
 .aday.blk{background:var(--block);padding-inline:8px;border-radius:4px}
 .aday .ev{font-size:1rem}
+.aday.wk{background:var(--weekend)}
+.aday.wk,.aday.blk,.aday.today{padding-inline:8px;border-radius:4px}
+.aday.today{box-shadow:inset 3px 0 0 var(--gold)}
+.aday.today .d{color:var(--green)}
+.aday.empty{padding-block:6px;align-items:center}
+.aday.empty .d{font-weight:600;color:var(--muted)}
+.aday.empty .d small{display:inline;margin-left:6px}
+.addday{align-self:flex-start;background:transparent;border:1px dashed var(--line);border-radius:6px;color:var(--muted);padding:4px 12px;font-size:.88rem;cursor:pointer}
+.addday:hover,.addday:focus-visible{border-color:var(--green);color:var(--green);outline:none}
 .empty{color:var(--muted);padding:16px 0;font-size:.95rem}
 .notes{font-size:.95rem;color:var(--muted);margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:8px 16px;border-radius:6px;font-size:.95rem;z-index:40;display:flex;align-items:center;gap:14px;max-width:calc(100% - 32px)}
@@ -394,9 +403,10 @@ function render(){
   $("grid").innerHTML=h;
   var a="";
   for(var dd=1;dd<=last.getDate();dd++){
-    var dt=new Date(y,m,dd), kk=key(dt), l=onDay(kk);
-    if(!l.length)continue;
-    a+='<div class="aday'+(isBlackout(kk)?' blk':'')+'"><div class="d">'+DOW[dt.getDay()]+'<small>'+(m+1)+'/'+dd+'</small></div><div class="list">'+l.map(evHtml).join("")+'</div></div>';
+    var dt=new Date(y,m,dd), kk=key(dt), l=onDay(kk), wd=dt.getDay();
+    var ac="aday"+(isBlackout(kk)?" blk":"")+(wd===0||wd===6?" wk":"")+(kk===today?" today":"")+(l.length?"":" empty");
+    a+='<div class="'+ac+'" data-date="'+kk+'"><div class="d">'+DOW[wd]+'<small>'+(m+1)+'/'+dd+'</small></div><div class="list">'+
+      (l.length?l.map(evHtml).join(""):'<button type="button" class="addday" data-date="'+kk+'" aria-label="Add an email on '+nice(kk)+'">+ Add</button>')+'</div></div>';
   }
   $("agenda").innerHTML=a||'<div class="empty">No emails'+(kkOnly?' needing Kelly K':filter.length?' for this audience':'')+' in '+NAMES[m]+'.</div>';
   renderFilter();
@@ -454,7 +464,8 @@ document.addEventListener("mouseout",function(ev){var b=ev.target.closest&&ev.ta
 window.addEventListener("scroll",function(){tip.hidden=true;},true);
 
 /* ---- click / drag ---- */
-document.addEventListener("click",function(ev){var b=ev.target.closest(".ev");if(b){tip.hidden=true;openEditor(b.getAttribute("data-id"));}});
+document.addEventListener("click",function(ev){var b=ev.target.closest(".ev");if(b){tip.hidden=true;openEditor(b.getAttribute("data-id"));return;}
+  var ad=ev.target.closest(".addday");if(ad){openEditor(null);$("f-date").value=ad.getAttribute("data-date");updAud();updWarn();}});
 document.addEventListener("dragstart",function(ev){var b=ev.target.closest&&ev.target.closest(".ev");if(!b)return;tip.hidden=true;dragId=b.getAttribute("data-id");b.classList.add("dragging");try{ev.dataTransfer.setData("text/plain",dragId);ev.dataTransfer.effectAllowed="copyMove";}catch(e){}});
 document.addEventListener("dragend",function(){dragId=null;document.querySelectorAll(".dragging,.over").forEach(function(n){n.classList.remove("dragging","over");});});
 document.addEventListener("dragover",function(ev){var c=ev.target.closest&&ev.target.closest(".cell");if(!c||!dragId)return;ev.preventDefault();try{ev.dataTransfer.dropEffect=ev.altKey?"copy":"move";}catch(e){}document.querySelectorAll(".over").forEach(function(n){if(n!==c)n.classList.remove("over");});c.classList.add("over");});
@@ -616,6 +627,7 @@ showWho(); render();
   if(!window.supabase){setStatus("Couldn’t connect. Check your internet and reload.",false);return;}
   sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
   await load(); loadChanges();
+  if(window.matchMedia("(max-width:700px)").matches){var td=document.querySelector('.aday.today');if(td)td.scrollIntoView({block:"center"});}
   sb.channel("sends-live")
     .on("postgres_changes",{event:"*",schema:"public",table:"sends"},function(p){
       if(p.eventType==="DELETE"){delete items[p.old.id];}
