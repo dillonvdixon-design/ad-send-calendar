@@ -4,6 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#44693D">
+<meta name="apple-mobile-web-app-title" content="Send Calendar">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" type="image/png" href="icon.png">
 <title>Live Send Calendar</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800&family=Barlow:ital,wght@0,400;0,500;0,600;1,500&display=swap">
 <style>
@@ -50,6 +55,9 @@ h1{font-family:var(--display);font-weight:800;font-size:1.55rem;letter-spacing:-
 .dot.live{background:var(--gold)}
 .linkbtn{background:none;border:0;padding:0;color:inherit;text-decoration:underline;cursor:pointer}
 .nav{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.navbtns,.monthnav{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.phonehint{display:none}
+.ph{display:none}
 .btn{background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:6px 12px;cursor:pointer}
 .btn:hover{border-color:var(--green)}
 .btn:focus-visible,.ev:focus-visible,.fbtn:focus-visible,.linkbtn:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
@@ -133,7 +141,28 @@ kbd{font-family:inherit;font-size:.8rem;border:1px solid var(--line);border-bott
 .drawer li{padding:10px 0;border-bottom:1px solid var(--line);font-size:.95rem}
 .drawer li .who{font-weight:600}
 .drawer li time{display:block;color:var(--muted);font-size:.82rem;margin-top:2px}
-@media (max-width:700px){.gridwrap{display:none}.agenda{display:flex}.dragtip{display:none}.panel .two{grid-template-columns:1fr}}
+@media (max-width:700px){
+  .gridwrap{display:none}.agenda{display:flex}.panel .two{grid-template-columns:1fr}
+  .deskhint{display:none}.phonehint{display:block}.dk{display:none}.ph{display:inline}
+  body{padding-block:12px 32px}
+  header{padding:16px;gap:12px}
+  .brand img{height:28px}
+  h1{font-size:1.35rem}
+  .nav{width:100%;flex-direction:column;align-items:stretch}
+  .navbtns{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+  .navbtns .btn{padding:8px 4px;font-size:.92rem}
+  .monthnav{justify-content:space-between;flex-wrap:nowrap}
+  .monthnav .btn{min-width:44px;min-height:44px;font-size:1.2rem}
+  #month{min-width:0;flex:1}
+  .legend{flex-wrap:nowrap;overflow-x:auto;margin-inline:calc(-1*max(16px,env(safe-area-inset-left,0px)));padding-inline:16px;padding-bottom:4px;scrollbar-width:none}
+  .legend::-webkit-scrollbar{display:none}
+  .fbtn,.legend .static,.legend .lbl,.linkbtn{flex:none;white-space:nowrap}
+  .fbtn{border-color:var(--line);padding:6px 12px}
+  .ev{padding:8px 10px}
+  .aday{grid-template-columns:56px 1fr}
+  .drawer{width:100%}
+  .toast{bottom:calc(12px + env(safe-area-inset-bottom,0px))}
+}
 @media (prefers-reduced-motion:no-preference){.drawer{animation:slidein .18s ease-out}@keyframes slidein{from{transform:translateX(30px);opacity:.6}to{transform:none;opacity:1}}}
 </style>
 </head>
@@ -146,12 +175,16 @@ kbd{font-family:inherit;font-size:.8rem;border:1px solid var(--line);border-bott
       <p class="sub"><span class="dot" id="dot"></span><span id="status">Connecting…</span><span aria-hidden="true">·</span><span id="whoami"></span></p>
     </div>
     <div class="nav">
-      <button class="btn primary" id="add" type="button">+ Add email</button>
-      <button class="btn" id="historyBtn" type="button">Recent changes</button>
-      <button class="btn" id="today" type="button">Today</button>
-      <button class="btn" id="prev" type="button" aria-label="Previous month">‹</button>
-      <div id="month" aria-live="polite"></div>
-      <button class="btn" id="next" type="button" aria-label="Next month">›</button>
+      <div class="navbtns">
+        <button class="btn primary" id="add" type="button">+ Add email</button>
+        <button class="btn" id="historyBtn" type="button"><span class="dk">Recent changes</span><span class="ph">Changes</span></button>
+        <button class="btn" id="today" type="button">Today</button>
+      </div>
+      <div class="monthnav">
+        <button class="btn" id="prev" type="button" aria-label="Previous month">‹</button>
+        <div id="month" aria-live="polite"></div>
+        <button class="btn" id="next" type="button" aria-label="Next month">›</button>
+      </div>
     </div>
   </header>
 
@@ -167,7 +200,8 @@ kbd{font-family:inherit;font-size:.8rem;border:1px solid var(--line);border-bott
     <span class="static"><i class="sw" style="background:var(--block);border:1px solid var(--blockfg)"></i>AD Connect blackout</span>
     <span class="static"><i class="sw" style="border:1px dashed var(--gold)"></i>Webinar / event day</span>
   </div>
-  <p class="hint"><span class="dragtip">Drag a block to move it (hold <kbd>Alt</kbd> while dragging to copy it). Hover to see notes. </span>Click a block to edit it. <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes, <kbd>Ctrl</kbd>+<kbd>Y</kbd> redoes. Click an audience above to show only theirs.</p>
+  <p class="hint phonehint">Tap an email to edit it or change its date. Swipe left or right to change months. Tap an audience above to show only theirs.</p>
+  <p class="hint deskhint"><span class="dragtip">Drag a block to move it (hold <kbd>Alt</kbd> while dragging to copy it). Hover to see notes. </span>Click a block to edit it. <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes, <kbd>Ctrl</kbd>+<kbd>Y</kbd> redoes. Click an audience above to show only theirs.</p>
 
   <div class="gridwrap"><div class="grid" id="grid"></div></div>
   <div class="agenda" id="agenda"></div>
@@ -494,6 +528,14 @@ function renderChanges(){
 async function loadChanges(){var r=await sb.from("changes").select("*").order("at",{ascending:false}).limit(50);if(!r.error){changes=r.data;renderChanges();}}
 $("historyBtn").onclick=function(){$("drawer").hidden=!$("drawer").hidden;if(!$("drawer").hidden){renderChanges();$("drawerClose").focus();}};
 $("drawerClose").onclick=function(){$("drawer").hidden=true;};
+
+
+/* ---- swipe between months on phones ---- */
+(function(){var sx=null,sy=null,el=document.getElementById("agenda");
+  el.addEventListener("touchstart",function(e){var t=e.touches[0];sx=t.clientX;sy=t.clientY;},{passive:true});
+  el.addEventListener("touchend",function(e){if(sx===null)return;var t=e.changedTouches[0],dx=t.clientX-sx,dy=t.clientY-sy;sx=null;
+    if(Math.abs(dx)>70&&Math.abs(dx)>Math.abs(dy)*1.5){go(dx<0?1:-1);window.scrollTo({top:0,behavior:"smooth"});}},{passive:true});
+})();
 
 /* ---- load + live updates ---- */
 function rowToItem(r){return {date:r.date,aud:r.aud,title:r.title,note:r.note||"",sort:r.sort||0,status:r.status||"planned",updated_at:r.updated_at,updated_by:r.updated_by||""};}
