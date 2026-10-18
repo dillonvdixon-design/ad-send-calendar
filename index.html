@@ -121,9 +121,10 @@ h2,.dow{font-family:var(--display)}
 *,*::before,*::after{box-sizing:border-box}
 body{margin:0}
 img{max-width:100%}
-.only-view{font-size:.82rem;color:var(--muted);margin:0}
-.editable .only-view{display:none}
-#lockbtn{white-space:nowrap}
+.toast{display:flex;align-items:center;gap:14px}
+.toast-undo{background:transparent;color:var(--gold);border:1px solid var(--gold);border-radius:5px;padding:3px 10px;font:inherit;font-weight:600;cursor:pointer}
+.toast-undo:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+kbd{font-family:inherit;font-size:.78rem;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 5px;background:var(--soft)}
 </style>
 </head>
 <body>
@@ -138,7 +139,6 @@ img{max-width:100%}
     </div>
     <div class="nav">
       <button class="btn only-edit primary" id="add" type="button">+ Add email</button>
-      <button class="btn" id="lockbtn" type="button">Unlock editing</button>
       <button class="btn" id="today" type="button">Today</button>
       <button class="btn" id="prev" type="button" aria-label="Previous month">‹</button>
       <div id="month" aria-live="polite"></div>
@@ -156,8 +156,7 @@ img{max-width:100%}
     <span><i class="sw" style="background:var(--block);border:1px solid var(--blockfg)"></i>AD Connect blackout</span>
     <span><i class="sw" style="border:1px dashed var(--gold)"></i>Webinar / event day</span>
   </div>
-  <p class="only-view">View only. Click “Unlock editing” and enter the team passcode to move or edit emails.</p>
-  <p class="hint only-edit"><span class="dragtip">Drag a block to another day to move it. </span>Click or tap a block to edit it. Changes save for everyone right away.</p>
+  <p class="hint"><span class="dragtip">Drag a block to another day to move it. </span>Click or tap a block to edit it. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> to undo (<kbd>Ctrl</kbd>+<kbd>Y</kbd> to redo). Changes save for everyone right away.</p>
 
   <div class="gridwrap"><div class="grid" id="grid"></div></div>
   <div class="agenda" id="agenda"></div>
@@ -199,18 +198,6 @@ img{max-width:100%}
 </div>
 <div class="toast" id="toast" hidden></div>
 
-
-<div class="shade" id="lockshade" hidden>
-  <form class="panel" id="lockform" autocomplete="off">
-    <h2>Unlock editing</h2>
-    <label>Team passcode<input id="l-code" type="password" required></label>
-    <p class="warnline" id="l-err" hidden>That passcode didn’t work. Check it and try again.</p>
-    <div class="row">
-      <button class="btn" id="l-cancel" type="button">Cancel</button>
-      <button class="btn primary" type="submit">Unlock</button>
-    </div>
-  </form>
-</div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script>
 var SUPABASE_URL="https://zaeynvsnevbvzhrrrguj.supabase.co";
@@ -228,7 +215,7 @@ var AUD = {
 };
 var NAMES=["January","February","March","April","May","June","July","August","September","October","November","December"];
 var DOW=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-var items={}, sb=null, code=null, canWrite=false, editingId=null, dragId=null;
+var items={}, sb=null, canWrite=true, editingId=null, dragId=null, undoStack=[], redoStack=[];
 var now=new Date(), ym={y:now.getFullYear(), m:now.getMonth()};
 try{var s=JSON.parse(localStorage.getItem("live-cal-ym")||"null"); if(s&&typeof s.y==="number") ym=s;}catch(e){}
 var $=function(id){return document.getElementById(id);};
@@ -247,7 +234,9 @@ function warnings(e){
   if(isBlackout(e.date) && e.aud!=="nonad") w.push("AD Connect blackout");
   return w;
 }
-function toast(t){var el=$("toast");el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(function(){el.hidden=true;},2600);}
+function toast(t,withUndo){var el=$("toast");el.innerHTML="";var s=document.createElement("span");s.textContent=t;el.appendChild(s);
+  if(withUndo){var b=document.createElement("button");b.type="button";b.className="toast-undo";b.textContent="Undo";b.onclick=function(){undo();};el.appendChild(b);}
+  el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(function(){el.hidden=true;},withUndo?6000:2600);}
 function setStatus(t,live){$("status").textContent=t;$("dot").className="dot"+(live?" live":"");}
 
 function evHtml(e){
@@ -289,21 +278,46 @@ document.addEventListener("dragend",function(){dragId=null;document.querySelecto
 document.addEventListener("dragover",function(ev){var c=ev.target.closest&&ev.target.closest(".cell");if(!c||!dragId)return;ev.preventDefault();document.querySelectorAll(".over").forEach(function(n){if(n!==c)n.classList.remove("over");});c.classList.add("over");});
 document.addEventListener("drop",function(ev){var c=ev.target.closest&&ev.target.closest(".cell");if(!c||!dragId)return;ev.preventDefault();var id=dragId,nd=c.getAttribute("data-date");dragId=null;c.classList.remove("over");if(items[id]&&items[id].date!==nd)move(id,nd);});
 
-/* ---- saving (passcode is checked by the database) ---- */
+/* ---- saving, with undo/redo ---- */
 function save(id,e){
-  return sb.rpc("save_send",{p_code:code,p_id:id,p_date:e.date,p_aud:e.aud,p_title:e.title,p_note:e.note||"",p_sort:e.sort||0})
+  return sb.rpc("save_send",{p_code:"",p_id:id,p_date:e.date,p_aud:e.aud,p_title:e.title,p_note:e.note||"",p_sort:e.sort||0})
     .then(function(r){if(r.error)throw r.error;});
 }
-function remove(id){return sb.rpc("delete_send",{p_code:code,p_id:id}).then(function(r){if(r.error)throw r.error;});}
-function fail(err,undo){
-  if(undo)undo();
-  if(err&&/passcode/i.test(err.message||"")){lock();toast("The passcode has changed. Unlock editing again.");}
-  else toast("That change didn’t save. Check your connection and try again.");
+function remove(id){return sb.rpc("delete_send",{p_code:"",p_id:id}).then(function(r){if(r.error)throw r.error;});}
+function copy(o){return o?Object.assign({},o):null;}
+function applyState(id,state){
+  if(state)items[id]=copy(state); else delete items[id];
+  render();
+  (state?save(id,state):remove(id)).catch(function(){toast("That change didn’t save. Reloading the calendar.");load();});
 }
+function change(id,after,msg){
+  var before=copy(items[id]);
+  applyState(id,after);
+  undoStack.push({id:id,before:before,after:copy(after)}); if(undoStack.length>50)undoStack.shift();
+  redoStack=[];
+  toast(msg,true);
+}
+function undo(){
+  var a=undoStack.pop(); if(!a){toast("Nothing to undo");return;}
+  applyState(a.id,a.before); redoStack.push(a);
+  if(a.before&&a.before.date){var d=parse(a.before.date);ym={y:d.getFullYear(),m:d.getMonth()};render();}
+  toast("Undone");
+}
+function redo(){
+  var a=redoStack.pop(); if(!a){toast("Nothing to redo");return;}
+  applyState(a.id,a.after); undoStack.push(a); toast("Redone");
+}
+document.addEventListener("keydown",function(ev){
+  if(!(ev.ctrlKey||ev.metaKey))return;
+  var t=ev.target, tag=(t&&t.tagName||"").toLowerCase();
+  if(tag==="input"||tag==="select"||tag==="textarea"||!$("shade").hidden)return;
+  var k=ev.key.toLowerCase();
+  if(k==="z"&&!ev.shiftKey){ev.preventDefault();undo();}
+  else if((k==="z"&&ev.shiftKey)||k==="y"){ev.preventDefault();redo();}
+});
 function move(id,date){
-  var prev=items[id]; items[id]=Object.assign({},prev,{date:date}); render();
-  save(id,items[id]).catch(function(e){fail(e,function(){items[id]=prev;render();});});
-  var d=parse(date); toast("Moved to "+DOW[d.getDay()]+" "+(d.getMonth()+1)+"/"+d.getDate());
+  var d=parse(date);
+  change(id,Object.assign({},items[id],{date:date}),"Moved to "+DOW[d.getDay()]+" "+(d.getMonth()+1)+"/"+d.getDate());
 }
 
 function openEditor(id){
@@ -321,58 +335,33 @@ function updWarn(){var w=warnings({title:$("f-title").value,aud:$("f-aud").value
 ["f-title","f-aud","f-date"].forEach(function(f){$(f).addEventListener("input",updWarn);});
 $("f-cancel").onclick=closeEditor;
 $("shade").addEventListener("click",function(ev){if(ev.target===$("shade"))closeEditor();});
-document.addEventListener("keydown",function(ev){if(ev.key==="Escape"){if(!$("shade").hidden)closeEditor();if(!$("lockshade").hidden)$("lockshade").hidden=true;}});
+document.addEventListener("keydown",function(ev){if(ev.key==="Escape"&&!$("shade").hidden)closeEditor();});
 $("add").onclick=function(){openEditor(null);};
 function armDelete(on){var b=$("f-del");b.dataset.armed=on?"1":"";b.textContent=on?"Confirm delete":"Delete";}
 $("f-del").onclick=function(){
   if(!editingId)return;
   if(!$("f-del").dataset.armed){armDelete(true);return;}
-  var id=editingId, keep=items[id]; delete items[id]; render(); closeEditor();
-  remove(id).catch(function(e){fail(e,function(){items[id]=keep;render();});}); toast("Deleted");
+  var id=editingId; closeEditor(); change(id,null,"Deleted");
 };
 $("form").addEventListener("submit",function(ev){
   ev.preventDefault(); if(!canWrite)return;
   var body={title:$("f-title").value.trim(),aud:$("f-aud").value,date:$("f-date").value,note:$("f-note").value.trim()};
   if(!body.title||!body.date)return;
   var id=editingId||("n"+Date.now().toString(36)+Math.random().toString(36).slice(2,6));
-  var prev=items[id];
+  var prev=items[id], isNew=!editingId;
   body.sort=prev?prev.sort:Math.floor(Date.now()/1000)%100000;
-  items[id]=Object.assign({},prev||{},body); render();
-  save(id,items[id]).catch(function(e){fail(e,function(){if(prev)items[id]=prev;else delete items[id];render();});});
-  if(!editingId){var d=parse(body.date); ym={y:d.getFullYear(),m:d.getMonth()}; go(0); toast("Added");} else toast("Saved");
   closeEditor();
+  change(id,Object.assign({},prev||{},body),isNew?"Added":"Saved");
+  if(isNew){var d=parse(body.date); ym={y:d.getFullYear(),m:d.getMonth()}; go(0);}
 });
 
-/* ---- unlock / lock editing ---- */
-function applyMode(){
-  var app=$("app"); app.classList.toggle("ro",!canWrite); app.classList.toggle("editable",canWrite);
-  $("lockbtn").textContent=canWrite?"Lock editing":"Unlock editing";
-  render();
-}
-function lock(){code=null;canWrite=false;try{localStorage.removeItem("send-cal-code");}catch(e){}applyMode();}
-async function tryCode(c,quiet){
-  if(!c)return false;
-  var r=await sb.rpc("check_passcode",{p_code:c});
-  if(!r.error&&r.data===true){code=c;canWrite=true;try{localStorage.setItem("send-cal-code",c);}catch(e){}applyMode();if(!quiet)toast("Editing unlocked");return true;}
-  return false;
-}
-$("lockbtn").onclick=function(){
-  if(canWrite){lock();toast("Editing locked");return;}
-  $("l-code").value="";$("l-err").hidden=true;$("lockshade").hidden=false;$("l-code").focus();
-};
-$("l-cancel").onclick=function(){$("lockshade").hidden=true;};
-$("lockshade").addEventListener("click",function(ev){if(ev.target===$("lockshade"))$("lockshade").hidden=true;});
-$("lockform").addEventListener("submit",async function(ev){
-  ev.preventDefault();
-  var ok=await tryCode($("l-code").value.trim());
-  if(ok)$("lockshade").hidden=true; else $("l-err").hidden=false;
-});
+function applyMode(){var app=$("app"); app.classList.add("editable"); app.classList.remove("ro"); render();}
 
 /* ---- load + live updates ---- */
 function rowToItem(r){return {date:r.date,aud:r.aud,title:r.title,note:r.note||"",sort:r.sort||0,updated_at:r.updated_at};}
 async function load(){
   var r=await sb.from("sends").select("*");
-  if(r.error){setStatus("Couldn’t reach the calendar database. Previews block this; open the hosted link or this file in your browser.",false);return;}
+  if(r.error){setStatus("Couldn’t load the calendar. Reload the page.",false);return;}
   var next={}; r.data.forEach(function(row){next[row.id]=rowToItem(row);}); items=next; render();
   setStatus("Live · "+r.data.length+" items",true);
 }
@@ -381,7 +370,6 @@ applyMode(); render();
   if(!window.supabase){setStatus("Couldn’t connect. Check your internet and reload.",false);return;}
   sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
   await load();
-  try{var saved=localStorage.getItem("send-cal-code"); if(saved) await tryCode(saved,true);}catch(e){}
   sb.channel("sends-live").on("postgres_changes",{event:"*",schema:"public",table:"sends"},function(p){
     if(p.eventType==="DELETE"){delete items[p.old.id];}
     else{items[p.new.id]=rowToItem(p.new);}
