@@ -1,0 +1,16 @@
+name: Keep database awake
+# Supabase's free plan pauses a project after a week with no activity.
+# This pings the calendar's database once a day so that never happens.
+on:
+  schedule:
+    - cron: "0 13 * * *"
+  workflow_dispatch:
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase
+        run: |
+          curl -sS -o /dev/null -w "%{http_code}\n" \
+            "https://zaeynvsnevbvzhrrrguj.supabase.co/rest/v1/sends?select=id&limit=1" \
+            -H "apikey: sb_publishable_I6c239TUODmV7d_pyxorBA_QeF_ph_r"
