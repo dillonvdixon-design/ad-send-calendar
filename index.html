@@ -98,6 +98,20 @@ kbd{font-family:inherit;font-size:.8rem;border:1px solid var(--line);border-bott
 .ev .st{display:inline-block;margin-top:4px;font-size:.72em;font-weight:600;text-transform:uppercase;letter-spacing:.04em;border:1px solid currentColor;border-radius:999px;padding:0 7px;opacity:.9}
 .ev .nt{position:absolute;top:4px;right:6px;width:7px;height:7px;border-radius:50%;background:currentColor;opacity:.55}
 .ev.sent{opacity:.6}
+.ev .kk{display:inline-block;margin:4px 0 0 4px;font-size:.72em;font-weight:700;border-radius:999px;padding:0 7px;border:1px solid var(--gold)}
+.kk-needed{background:var(--gold);color:#333F48}
+.kk-requested{background:transparent;color:inherit}
+.kk-approved{background:transparent;color:inherit;border-color:currentColor;opacity:.85}
+.kk-redo{background:var(--warnbg);color:var(--warn);border-color:var(--warn)}
+.kkbtn{display:inline-flex;align-items:center;gap:6px;background:transparent;border:1px solid var(--gold);border-radius:999px;padding:3px 12px;color:var(--fg);font-weight:600;cursor:pointer}
+.kkbtn[aria-pressed="true"]{background:var(--gold);color:#333F48}
+.kkbtn .n{background:var(--gold);color:#333F48;border-radius:999px;padding:0 7px;font-size:.85em}
+.kkbtn[aria-pressed="true"] .n{background:#333F48;color:var(--gold)}
+.kkmode .fbtn{opacity:.4}
+.divs{display:flex;flex-wrap:wrap;gap:6px 14px;font-weight:normal;color:var(--fg)}
+.panel .divs label{flex-direction:row;align-items:center;gap:6px;font-weight:normal;color:var(--fg);font-size:.95rem}
+.panel .divs input{padding:0;width:18px;height:18px;margin:0;accent-color:var(--green)}
+.kkwhy{font-size:.84rem;color:var(--muted);font-weight:normal;margin:0}
 .ev.sent .st::before{content:"✓ "}
 .nonad{background:var(--c-nonad);color:var(--c-nonad-fg);border-color:var(--c-nonad-bar)}
 .adsup{background:var(--c-adsup);color:var(--c-adsup-fg);border-color:var(--c-adsup-bar)}
@@ -190,6 +204,7 @@ kbd{font-family:inherit;font-size:.8rem;border:1px solid var(--line);border-bott
   </header>
 
   <div class="legend" id="legend">
+    <button class="kkbtn" type="button" id="kkBtn" aria-pressed="false">Needs Kelly K <span class="n" id="kkCount" hidden></span></button>
     <span class="lbl">Show:</span>
     <button class="fbtn" type="button" data-aud="nonad" aria-pressed="false"><i class="sw nonad"></i>Non-AD Supplier Prospects</button>
     <button class="fbtn" type="button" data-aud="adsup" aria-pressed="false"><i class="sw adsup"></i>AD Supplier Prospects</button>
@@ -201,8 +216,8 @@ kbd{font-family:inherit;font-size:.8rem;border:1px solid var(--line);border-bott
     <span class="static"><i class="sw" style="background:var(--block);border:1px solid var(--blockfg)"></i>AD Connect blackout</span>
     <span class="static"><i class="sw" style="border:1px dashed var(--gold)"></i>Webinar / event day</span>
   </div>
-  <p class="hint phonehint">Tap an email to edit it or change its date. Swipe left or right to change months. Tap an audience above to show only theirs.</p>
-  <p class="hint deskhint"><span class="dragtip">Drag a block to move it (hold <kbd>Alt</kbd> while dragging to copy it). Hover to see notes. </span>Click a block to edit it. <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes, <kbd>Ctrl</kbd>+<kbd>Y</kbd> redoes. Click an audience above to show only theirs.</p>
+  <p class="hint phonehint">Tap an email to edit it or change its date. Swipe left or right to change months. Tap an audience above to show only theirs, or tap Needs Kelly K.</p>
+  <p class="hint deskhint"><span class="dragtip">Drag a block to move it (hold <kbd>Alt</kbd> while dragging to copy it). Hover to see notes. </span>Click a block to edit it. <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes, <kbd>Ctrl</kbd>+<kbd>Y</kbd> redoes. Click an audience above to show only theirs, or click <b>Needs Kelly K</b> to see what Kelly Koch (IESD) has to approve.</p>
 
   <div class="gridwrap"><div class="grid" id="grid"></div></div>
   <div class="agenda" id="agenda"></div>
@@ -210,6 +225,7 @@ kbd{font-family:inherit;font-size:.8rem;border:1px solid var(--line);border-bott
   <ul class="notes">
     <li>No Friday sends. Follow-ups are the only exception.</li>
     <li>AD Connect blackouts apply to everyone except Non-AD Supplier Prospects (AD Associates included). November tease date is still TBD.</li>
+    <li>Kelly Koch (IESD) approves the date of any mass email to AD members or suppliers that includes IESD US. Not needed for Non-AD prospects, AD Associates, or sends limited to other divisions. If an approved email moves, it is flagged to re-check with her.</li>
     <li>Blocks flagged in orange break one of these rules. A dot in the corner means the block has a note.</li>
   </ul>
 </div>
@@ -243,6 +259,25 @@ kbd{font-family:inherit;font-size:.8rem;border:1px solid var(--line);border-bott
         </select>
       </label>
     </div>
+    <fieldset class="divs-wrap" id="f-div-wrap" style="border:0;padding:0;margin:0">
+      <label style="margin-bottom:6px">Divisions included</label>
+      <div class="divs" id="f-divs">
+        <label><input type="checkbox" id="div-all"> All divisions</label>
+        <label><input type="checkbox" id="div-iesd"> IESD US</label>
+        <label><input type="checkbox" id="div-isc"> ISC US</label>
+        <label><input type="checkbox" id="div-bpt"> BPT US</label>
+        <label><input type="checkbox" id="div-phcp"> PHCP US</label>
+        <label><input type="checkbox" id="div-canada"> Canada</label>
+      </div>
+    </fieldset>
+    <label id="f-kk-wrap">Kelly K approval
+      <select id="f-kk">
+        <option value="">Not sent to Kelly yet</option>
+        <option value="requested">Sent to Kelly, waiting</option>
+        <option value="approved">Kelly approved this date</option>
+      </select>
+      <span class="kkwhy" id="f-kk-why"></span>
+    </label>
     <label>Note (optional)<textarea id="f-note" maxlength="300"></textarea></label>
     <p class="warnline" id="f-warn" hidden></p>
     <p class="meta" id="f-meta"></p>
@@ -291,6 +326,10 @@ var AUD={
   blackout:{label:"No sends",cls:"blkev"}
 };
 var STATUS={planned:"Planned",drafting:"Drafting",review:"In review",approved:"Approved",sent:"Sent"};
+var DIVS=[["iesd","IESD US"],["isc","ISC US"],["bpt","BPT US"],["phcp","PHCP US"],["canada","Canada"]];
+var KK_AUDS=["adsup","mprosp","mpart","members","suppliers"];  /* AD members and suppliers. Not Non-AD prospects, not AD Associates */
+var KK={needed:"Needs Kelly K",requested:"Sent to Kelly K",approved:"Kelly K approved",redo:"Date moved: re-check with Kelly K"};
+var kkOnly=false;
 var NAMES=["January","February","March","April","May","June","July","August","September","October","November","December"];
 var SHORT=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 var DOW=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
@@ -300,6 +339,11 @@ var now=new Date(), ym={y:now.getFullYear(), m:now.getMonth()};
 try{var s=JSON.parse(localStorage.getItem("live-cal-ym")||"null"); if(s&&typeof s.y==="number") ym=s;}catch(e){}
 try{filter=JSON.parse(localStorage.getItem("live-cal-filter")||"[]")||[];}catch(e){filter=[];}
 var $=function(id){return document.getElementById(id);};
+try{kkOnly=localStorage.getItem("live-cal-kk")==="1";}catch(e){}
+function divList(e){var d=(e&&e.divisions)||"all";return d==="all"?[]:d.split(",").filter(Boolean);}
+function divLabel(e){var l=divList(e);if(!l.length)return "";return l.map(function(k){var f=DIVS.filter(function(x){return x[0]===k;})[0];return f?f[1]:k;}).join(", ");}
+function needsKelly(e){if(!isSend(e)||KK_AUDS.indexOf(e.aud)<0)return false;var l=divList(e);return !l.length||l.indexOf("iesd")>-1;}
+function kellyState(e){if(!needsKelly(e))return null;if(e.kk_status==="approved")return e.kk_date===e.date?"approved":"redo";if(e.kk_status==="requested")return "requested";return "needed";}
 
 function esc(t){return String(t==null?"":t).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
 function key(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
@@ -307,7 +351,7 @@ function parse(k){var p=k.split("-");return new Date(+p[0],+p[1]-1,+p[2]);}
 function nice(k){if(!k)return "";var d=parse(k);return DOW[d.getDay()]+" "+SHORT[d.getMonth()]+" "+d.getDate();}
 function isSend(e){return e&&e.aud!=="event"&&e.aud!=="blackout";}
 function list(){return Object.keys(items).map(function(id){return Object.assign({id:id},items[id]);});}
-function visible(e){if(!filter.length||!isSend(e))return true;return filter.indexOf(e.aud)>-1;}
+function visible(e){if(kkOnly)return needsKelly(e);if(!filter.length||!isSend(e))return true;return filter.indexOf(e.aud)>-1;}
 function onDay(k){return list().filter(function(e){return e.date===k&&visible(e);}).sort(function(a,b){return (a.sort||0)-(b.sort||0)||String(a.title).localeCompare(b.title);});}
 function isBlackout(k){return list().some(function(e){return e.date===k&&e.aud==="blackout";});}
 function warnings(e){
@@ -330,8 +374,9 @@ function evHtml(e){
   var drag=e.aud!=="blackout";
   return '<button type="button" class="ev '+a.cls+(send&&st==="sent"?" sent":"")+'" data-id="'+esc(e.id)+'"'+(drag?' draggable="true"':'')+'>'+
     (e.note?'<span class="nt" aria-hidden="true"></span>':'')+esc(e.title)+
-    (a.label&&e.aud!=="blackout"?'<small>'+esc(a.label)+'</small>':'')+
+    (a.label&&e.aud!=="blackout"?'<small>'+esc(a.label)+(divLabel(e)?' \u00b7 '+esc(divLabel(e)):'')+'</small>':'')+
     (send?'<span class="st">'+esc(STATUS[st]||st)+'</span>':'')+
+    (kellyState(e)?'<span class="kk kk-'+kellyState(e)+'">'+esc(kellyState(e)==="approved"?"\u2713 Kelly K":kellyState(e)==="requested"?"Kelly K: sent":kellyState(e)==="redo"?"Kelly K: re-check date":"Needs Kelly K")+'</span>':'')+
     (w.length?'<span class="w">! '+esc(w.join(", "))+'</span>':'')+'</button>';
 }
 function render(){
@@ -353,7 +398,7 @@ function render(){
     if(!l.length)continue;
     a+='<div class="aday'+(isBlackout(kk)?' blk':'')+'"><div class="d">'+DOW[dt.getDay()]+'<small>'+(m+1)+'/'+dd+'</small></div><div class="list">'+l.map(evHtml).join("")+'</div></div>';
   }
-  $("agenda").innerHTML=a||'<div class="empty">No emails'+(filter.length?' for this audience':'')+' in '+NAMES[m]+'.</div>';
+  $("agenda").innerHTML=a||'<div class="empty">No emails'+(kkOnly?' needing Kelly K':filter.length?' for this audience':'')+' in '+NAMES[m]+'.</div>';
   renderFilter();
 }
 function renderFilter(){
@@ -363,7 +408,13 @@ function renderFilter(){
   });
   $("legend").classList.toggle("filtered",filter.length>0);
   $("showAll").hidden=!filter.length;
+  var open=list().filter(function(e){var s=kellyState(e);return s==="needed"||s==="redo"||s==="requested";}).length;
+  $("kkBtn").setAttribute("aria-pressed",kkOnly?"true":"false");
+  $("kkCount").textContent=open?String(open):"";
+  $("kkCount").hidden=!open;
+  $("app").classList.toggle("kkmode",kkOnly);
 }
+$("kkBtn").onclick=function(){kkOnly=!kkOnly;try{localStorage.setItem("live-cal-kk",kkOnly?"1":"0");}catch(e){}render();};
 function go(dm){ym.m+=dm; if(ym.m<0){ym.m=11;ym.y--;} if(ym.m>11){ym.m=0;ym.y++;} try{localStorage.setItem("live-cal-ym",JSON.stringify(ym));}catch(e){} render();}
 $("prev").onclick=function(){go(-1);};
 $("next").onclick=function(){go(1);};
@@ -388,6 +439,8 @@ document.addEventListener("mouseover",function(ev){
   tip.innerHTML="";
   var t=document.createElement("b");t.textContent=e.title;tip.appendChild(t);
   var l=document.createElement("div");l.className="tl";l.textContent=nice(e.date)+(a.label&&e.aud!=="blackout"?" · "+a.label:"")+(isSend(e)?" · "+(STATUS[e.status||"planned"]):"");tip.appendChild(l);
+  var ks=kellyState(e);if(ks){var kd=document.createElement("div");kd.className="tw";kd.textContent=KK[ks]+(ks==="redo"?" (she approved "+nice(e.kk_date)+")":"");tip.appendChild(kd);}
+  if(divLabel(e)){var dv=document.createElement("div");dv.className="tl";dv.textContent="Divisions: "+divLabel(e);tip.appendChild(dv);}
   if(e.note){var n=document.createElement("div");n.className="tn";n.textContent=e.note;tip.appendChild(n);}
   if(w.length){var ww=document.createElement("div");ww.className="tw";ww.textContent="Heads up: "+w.join(", ");tip.appendChild(ww);}
   if(e.updated_by){var u=document.createElement("div");u.className="tl";u.style.marginTop="6px";u.textContent="Last changed by "+e.updated_by;tip.appendChild(u);}
@@ -423,10 +476,12 @@ function describe(b,a){
   if((b.status||"planned")!==(a.status||"planned")&&isSend(a))parts.push("set "+q(a.title)+" to "+STATUS[a.status||"planned"]);
   if(b.aud!==a.aud)parts.push("changed the audience of "+q(a.title));
   if((b.note||"")!==(a.note||""))parts.push("updated the note on "+q(a.title));
+  if((b.divisions||"all")!==(a.divisions||"all"))parts.push("set the divisions for "+q(a.title)+" to "+(divLabel(a)||"all divisions"));
+  if((b.kk_status||"")!==(a.kk_status||"")&&needsKelly(a))parts.push(a.kk_status==="approved"?"marked "+q(a.title)+" approved by Kelly K for "+nice(a.kk_date):a.kk_status==="requested"?"marked "+q(a.title)+" as sent to Kelly K":"cleared Kelly K's approval on "+q(a.title));
   return parts.join("; ");
 }
 function save(id,e,detail){
-  return sb.rpc("save_send",{p_id:id,p_date:e.date,p_aud:e.aud,p_title:e.title,p_note:e.note||"",p_sort:e.sort||0,p_status:e.status||"planned",p_who:myName||"Someone",p_detail:detail||""})
+  return sb.rpc("save_send_v2",{p_id:id,p_date:e.date,p_aud:e.aud,p_title:e.title,p_note:e.note||"",p_sort:e.sort||0,p_status:e.status||"planned",p_divisions:e.divisions||"all",p_kk_status:e.kk_status||"",p_kk_date:e.kk_date||null,p_who:myName||"Someone",p_detail:detail||""})
     .then(function(r){if(r.error)throw r.error;});
 }
 function remove(id,detail){return sb.rpc("delete_send",{p_id:id,p_who:myName||"Someone",p_detail:detail||""}).then(function(r){if(r.error)throw r.error;});}
@@ -481,7 +536,7 @@ function openEditor(id,prefill){
   editingId=id||null;
   var e=id?items[id]:(prefill||{title:"",aud:"mpart",date:key(new Date()),note:"",status:"planned"});
   $("ftitle").textContent=id?"Edit email":(prefill?"Duplicate email":"Add email");
-  $("f-title").value=e.title||""; $("f-aud").value=e.aud||"mpart"; $("f-date").value=e.date||""; $("f-note").value=e.note||""; $("f-status").value=e.status||"planned";
+  $("f-title").value=e.title||""; $("f-aud").value=e.aud||"mpart"; $("f-date").value=e.date||""; $("f-note").value=e.note||""; $("f-status").value=e.status||"planned"; setDivs(e.divisions||"all"); $("f-kk").value=(e.kk_status==="approved"&&e.kk_date&&e.kk_date!==e.date)?"":(e.kk_status||"");
   $("f-del").hidden=!id; $("f-dup").hidden=!id; armDelete(false); updAud(); updWarn();
   var meta="";
   if(id&&e.updated_at)meta="Last changed "+new Date(e.updated_at).toLocaleString([], {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})+(e.updated_by?" by "+e.updated_by:"");
@@ -490,7 +545,16 @@ function openEditor(id,prefill){
   $("shade").hidden=false; (prefill?$("f-date"):$("f-title")).focus();
 }
 function closeEditor(){$("shade").hidden=true;editingId=null;}
-function updAud(){var a=$("f-aud").value;$("f-status-wrap").style.visibility=(a==="event"||a==="blackout")?"hidden":"visible";}
+function updAud(){var a=$("f-aud").value, send=!(a==="event"||a==="blackout");$("f-status-wrap").style.visibility=send?"visible":"hidden";$("f-div-wrap").hidden=!send;
+  var need=needsKelly({aud:a,divisions:getDivs()});$("f-kk-wrap").hidden=!need;
+  $("f-kk-why").textContent=need?"Goes to IESD US members or suppliers, so Kelly Koch (IESD) approves the date.":"";}
+function getDivs(){var all=$("div-all").checked;if(all)return "all";var l=[];DIVS.forEach(function(d){if($("div-"+d[0]).checked)l.push(d[0]);});return l.length?l.join(","):"all";}
+function setDivs(v){var l=v==="all"?[]:v.split(",");$("div-all").checked=!l.length;DIVS.forEach(function(d){$("div-"+d[0]).checked=l.indexOf(d[0])>-1;});}
+document.addEventListener("change",function(ev){var t=ev.target;if(!t.closest||!t.closest("#f-divs"))return;
+  if(t.id==="div-all"&&t.checked)DIVS.forEach(function(d){$("div-"+d[0]).checked=false;});
+  else if(t.id!=="div-all"&&t.checked)$("div-all").checked=false;
+  if(!DIVS.some(function(d){return $("div-"+d[0]).checked;}))$("div-all").checked=true;
+  updAud();});
 function updWarn(){var w=warnings({title:$("f-title").value,aud:$("f-aud").value,date:$("f-date").value});$("f-warn").hidden=!w.length;$("f-warn").textContent=w.length?"Heads up: "+w.join(", ")+".":"";}
 ["f-title","f-aud","f-date"].forEach(function(f){$(f).addEventListener("input",function(){updAud();updWarn();});});
 $("f-cancel").onclick=closeEditor;
@@ -505,7 +569,8 @@ $("f-del").onclick=function(){
 };
 $("form").addEventListener("submit",function(ev){
   ev.preventDefault();
-  var body={title:$("f-title").value.trim(),aud:$("f-aud").value,date:$("f-date").value,note:$("f-note").value.trim(),status:$("f-status").value};
+  var body={title:$("f-title").value.trim(),aud:$("f-aud").value,date:$("f-date").value,note:$("f-note").value.trim(),status:$("f-status").value,divisions:getDivs()};
+  var kk=needsKelly(body)?$("f-kk").value:"";body.kk_status=kk;body.kk_date=kk==="approved"?body.date:"";
   if(!body.title||!body.date)return;
   var id=editingId||newId(), prev=items[id], isNew=!editingId;
   body.sort=prev?prev.sort:Math.floor(Date.now()/1000)%100000;
@@ -539,7 +604,7 @@ $("drawerClose").onclick=function(){$("drawer").hidden=true;};
 })();
 
 /* ---- load + live updates ---- */
-function rowToItem(r){return {date:r.date,aud:r.aud,title:r.title,note:r.note||"",sort:r.sort||0,status:r.status||"planned",updated_at:r.updated_at,updated_by:r.updated_by||""};}
+function rowToItem(r){return {date:r.date,aud:r.aud,title:r.title,note:r.note||"",sort:r.sort||0,status:r.status||"planned",divisions:r.divisions||"all",kk_status:r.kk_status||"",kk_date:r.kk_date||"",updated_at:r.updated_at,updated_by:r.updated_by||""};}
 async function load(){
   var r=await sb.from("sends").select("*");
   if(r.error){setStatus("Couldn’t reach the calendar database. Previews block this; open the hosted link.",false);return;}
